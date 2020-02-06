@@ -276,7 +276,7 @@ class _GlancesCurses(object):
             'DEFAULT': self.no_color,
             'UNDERLINE': curses.A_UNDERLINE,
             'BOLD': A_BOLD,
-            'SORT': curses.A_UNDERLINE | A_BOLD,
+            'SORT': A_BOLD,
             'OK': self.default_color2,
             'MAX': self.default_color2 | A_BOLD,
             'FILTER': self.filter_color,
