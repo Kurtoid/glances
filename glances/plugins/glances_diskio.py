@@ -51,6 +51,9 @@ class Plugin(GlancesPlugin):
 
         # We want to display the stat in the curse interface
         self.display_curse = True
+        self.hide_zeros = False
+        if(self.get_conf_value("hide_zeros")):
+            self.hide_zeros = True
 
     def get_key(self):
         """Return the key of the list."""
@@ -177,52 +180,63 @@ class Plugin(GlancesPlugin):
             ret.append(self.curse_add_line(msg))
             msg = '{:>7}'.format('W/s')
             ret.append(self.curse_add_line(msg))
+        num_active_disks = 0
         # Disk list (sorted by name)
         for i in self.sorted_stats():
+            line = []
             # Is there an alias for the disk name ?
             disk_real_name = i['disk_name']
             disk_name = self.has_alias(i['disk_name'])
             if disk_name is None:
                 disk_name = disk_real_name
             # New line
-            ret.append(self.curse_new_line())
+            line.append(self.curse_new_line())
             if len(disk_name) > name_max_width:
                 # Cut disk name if it is too long
                 disk_name = '_' + disk_name[-name_max_width:]
             msg = '{:{width}}'.format(nativestr(disk_name),
                                       width=name_max_width)
-            ret.append(self.curse_add_line(msg))
+            line.append(self.curse_add_line(msg))
             if args.diskio_iops:
                 # count
-                txps = self.auto_unit(
-                    int(i['read_count'] // i['time_since_update']))
-                rxps = self.auto_unit(
-                    int(i['write_count'] // i['time_since_update']))
+                txps = int(i['read_count'] // i['time_since_update'])
+                rxps = int(i['write_count'] // i['time_since_update'])
+                if(txps < 1 and rxps < 1 and self.hide_zeros):
+                    continue
+                num_active_disks += 1
+                txps = self.auto_unit(txps)
+                rxps = self.auto_unit(rxps)
                 msg = '{:>7}'.format(txps)
-                ret.append(self.curse_add_line(msg,
+                line.append(self.curse_add_line(msg,
                                                self.get_views(item=i[self.get_key()],
                                                               key='read_count',
                                                               option='decoration')))
                 msg = '{:>7}'.format(rxps)
-                ret.append(self.curse_add_line(msg,
+                line.append(self.curse_add_line(msg,
                                                self.get_views(item=i[self.get_key()],
                                                               key='write_count',
                                                               option='decoration')))
             else:
                 # Bitrate
-                txps = self.auto_unit(
-                    int(i['read_bytes'] // i['time_since_update']))
-                rxps = self.auto_unit(
-                    int(i['write_bytes'] // i['time_since_update']))
+                txps = int(i['read_bytes'] // i['time_since_update'])
+                rxps = int(i['write_bytes'] // i['time_since_update'])
+                if(txps < 1 and rxps < 1 and self.hide_zeros):
+                    continue
+                num_active_disks += 1
+                txps = self.auto_unit(txps)
+                rxps = self.auto_unit(rxps)
                 msg = '{:>7}'.format(txps)
-                ret.append(self.curse_add_line(msg,
+                line.append(self.curse_add_line(msg,
                                                self.get_views(item=i[self.get_key()],
                                                               key='read_bytes',
                                                               option='decoration')))
                 msg = '{:>7}'.format(rxps)
-                ret.append(self.curse_add_line(msg,
+                line.append(self.curse_add_line(msg,
                                                self.get_views(item=i[self.get_key()],
                                                               key='write_bytes',
                                                               option='decoration')))
-
+            ret += line
+        if(num_active_disks == 0):
+            ret.append(self.curse_new_line())
+            ret.append(self.curse_add_line("No active disks"))
         return ret
